@@ -72,6 +72,20 @@ Ou:
 git remote add origin https://github.com/SEU_USUARIO/openclaw-telegram-elevated-rollout.git
 ```
 
+Se preferir criar o repositório pelo GitHub CLI:
+
+```bash
+gh auth login -h github.com
+gh repo create openclaw-telegram-elevated-rollout --private --source=. --remote=origin --push
+```
+
+Depois confirme se as duas branches foram publicadas:
+
+```bash
+git push -u origin dev
+git push -u origin prod
+```
+
 ## Fluxo do dia a dia
 
 Para trabalhar:
