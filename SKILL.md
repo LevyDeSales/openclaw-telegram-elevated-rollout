@@ -88,7 +88,7 @@ Fast path:
 
 - Prefer the bundled wrappers over handwritten `openclaw ...` variants.
 - From rescue, do **not** trust `openclaw --profile default ...` to reach the principal.
-- Keep rescue scope narrow: sender `6204912070`, `watchdog` allowed, `updater` blocked.
+- Keep rescue scope narrow: sender `TELEGRAM_SENDER_ID`, `watchdog` allowed, `updater` blocked.
 - Keep principal scope honest: explicit allow target, explicit blocks for the rest, and no broad sender/agent expansion.
 - Fail closed on target ambiguity.
 - Do not imply that principal apply is broad or implicit.

@@ -14,7 +14,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WRAPPER = os.path.join(SCRIPT_DIR, "rescue-openclaw.sh")
 EXPECTED_STATE_DIR = os.path.join(HOME_DIR, ".openclaw-rescue")
 EXPECTED_CONFIG_PATH = os.path.join(EXPECTED_STATE_DIR, "openclaw.json")
-DEFAULT_SENDER = "6204912070"
 REQUIRED_ALLOWED_AGENT = "watchdog"
 REQUIRED_BLOCKED_AGENT = "updater"
 
@@ -22,6 +21,13 @@ REQUIRED_BLOCKED_AGENT = "updater"
 def fail(message: str) -> None:
     print(f"[FAIL] {message}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def resolve_sender(cli_value: str | None) -> str:
+    sender = cli_value or os.environ.get("TELEGRAM_SENDER_ID")
+    if not sender:
+        fail("telegram sender id is required; pass --sender or set TELEGRAM_SENDER_ID")
+    return str(sender)
 
 
 def load_json(path: str) -> Dict[str, Any]:
@@ -95,9 +101,10 @@ def normalize_target_paths() -> Tuple[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Apply the validated rescue Telegram elevated config with backup-first semantics.")
-    parser.add_argument("--sender", default=DEFAULT_SENDER, help=f"Telegram sender id to ensure in allowlists (default: {DEFAULT_SENDER})")
+    parser.add_argument("--sender", help="Telegram sender id to ensure in allowlists. Defaults to TELEGRAM_SENDER_ID when set.")
     parser.add_argument("--dry-run", action="store_true", help="Show the planned delta without writing the config")
     args = parser.parse_args()
+    sender = resolve_sender(args.sender)
 
     if not os.path.exists(WRAPPER) or not os.access(WRAPPER, os.X_OK):
         fail(f"wrapper not executable: {WRAPPER}")
@@ -131,8 +138,8 @@ def main() -> None:
     if not isinstance(elevated_allow_from, dict):
         fail("config.tools.elevated.allowFrom is not an object")
     global_telegram = ensure_list(elevated_allow_from, "telegram")
-    if add_sender(global_telegram, str(args.sender)):
-        changes.append(f"add sender {args.sender} to tools.elevated.allowFrom.telegram")
+    if add_sender(global_telegram, sender):
+        changes.append(f"add sender {sender} to tools.elevated.allowFrom.telegram")
 
     watchdog = get_agent(config, REQUIRED_ALLOWED_AGENT)
     updater = get_agent(config, REQUIRED_BLOCKED_AGENT)
@@ -150,8 +157,8 @@ def main() -> None:
     if not isinstance(watchdog_allow_from, dict):
         fail("watchdog.tools.elevated.allowFrom is not an object")
     watchdog_telegram = ensure_list(watchdog_allow_from, "telegram")
-    if add_sender(watchdog_telegram, str(args.sender)):
-        changes.append(f"add sender {args.sender} to watchdog.tools.elevated.allowFrom.telegram")
+    if add_sender(watchdog_telegram, sender):
+        changes.append(f"add sender {sender} to watchdog.tools.elevated.allowFrom.telegram")
 
     updater_tools = updater.setdefault("tools", {})
     if not isinstance(updater_tools, dict):
@@ -166,7 +173,7 @@ def main() -> None:
     if args.dry_run:
         print("Apply rescue elevated config (dry-run)")
         print(f"Config    : {config_path}")
-        print(f"Sender    : {args.sender}")
+        print(f"Sender    : {sender}")
         if changes:
             print("Changes:")
             for change in changes:
@@ -187,7 +194,7 @@ def main() -> None:
     print("Apply rescue elevated config")
     print(f"Config    : {config_path}")
     print(f"Backup    : {backup_path}")
-    print(f"Sender    : {args.sender}")
+    print(f"Sender    : {sender}")
     if changes:
         print("Changes:")
         for change in changes:

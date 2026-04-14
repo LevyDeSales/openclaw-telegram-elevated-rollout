@@ -14,12 +14,16 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WRAPPER = os.path.join(SCRIPT_DIR, "principal-openclaw.sh")
 EXPECTED_STATE_DIR = os.path.join(HOME_DIR, ".openclaw")
 EXPECTED_CONFIG_PATH = os.path.join(EXPECTED_STATE_DIR, "openclaw.json")
-DEFAULT_SENDER = "6204912070"
-
-
 def fail(message: str) -> None:
     print(f"[FAIL] {message}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def resolve_sender(cli_value: str | None) -> str:
+    sender = cli_value or os.environ.get("TELEGRAM_SENDER_ID")
+    if not sender:
+        fail("telegram sender id is required; pass --sender or set TELEGRAM_SENDER_ID")
+    return str(sender)
 
 
 def load_json(path: str) -> Dict[str, Any]:
@@ -92,11 +96,12 @@ def get_agent(config: Dict[str, Any], agent_id: str) -> Dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Apply a controlled principal Telegram elevated config with explicit allow/block decisions.")
-    parser.add_argument("--sender", default=DEFAULT_SENDER, help=f"Telegram sender id to allow globally and for allowed agents (default: {DEFAULT_SENDER})")
+    parser.add_argument("--sender", help="Telegram sender id to allow globally and for allowed agents. Defaults to TELEGRAM_SENDER_ID when set.")
     parser.add_argument("--allow-agent", action="append", default=[], help="Agent id to explicitly allow. Repeat as needed.")
     parser.add_argument("--block-agent", action="append", default=[], help="Agent id to explicitly block. Repeat as needed.")
     parser.add_argument("--dry-run", action="store_true", help="Show the planned delta without writing the config")
     args = parser.parse_args()
+    sender = resolve_sender(args.sender)
 
     if not os.path.exists(WRAPPER) or not os.access(WRAPPER, os.X_OK):
         fail(f"wrapper not executable: {WRAPPER}")
@@ -163,8 +168,8 @@ def main() -> None:
     if not isinstance(elevated_allow_from, dict):
         fail("config.tools.elevated.allowFrom is not an object")
     global_telegram = ensure_list(elevated_allow_from, "telegram")
-    if add_sender(global_telegram, str(args.sender)):
-        changes.append(f"add sender {args.sender} to tools.elevated.allowFrom.telegram")
+    if add_sender(global_telegram, sender):
+        changes.append(f"add sender {sender} to tools.elevated.allowFrom.telegram")
 
     for agent_id in sorted(allow_agents):
         agent = get_agent(config, agent_id)
@@ -181,8 +186,8 @@ def main() -> None:
         if not isinstance(agent_allow_from, dict):
             fail(f"{agent_id}.tools.elevated.allowFrom is not an object")
         agent_telegram = ensure_list(agent_allow_from, "telegram")
-        if add_sender(agent_telegram, str(args.sender)):
-            changes.append(f"add sender {args.sender} to {agent_id}.tools.elevated.allowFrom.telegram")
+        if add_sender(agent_telegram, sender):
+            changes.append(f"add sender {sender} to {agent_id}.tools.elevated.allowFrom.telegram")
 
     for agent_id in sorted(block_agents):
         agent = get_agent(config, agent_id)
@@ -199,7 +204,7 @@ def main() -> None:
     if args.dry_run:
         print("Apply principal elevated config (dry-run)")
         print(f"Config    : {config_path}")
-        print(f"Sender    : {args.sender}")
+        print(f"Sender    : {sender}")
         print(f"Allow     : {', '.join(sorted(allow_agents))}")
         print(f"Block     : {', '.join(sorted(block_agents))}")
         if changes:
@@ -222,7 +227,7 @@ def main() -> None:
     print("Apply principal elevated config")
     print(f"Config    : {config_path}")
     print(f"Backup    : {backup_path}")
-    print(f"Sender    : {args.sender}")
+    print(f"Sender    : {sender}")
     print(f"Allow     : {', '.join(sorted(allow_agents))}")
     print(f"Block     : {', '.join(sorted(block_agents))}")
     if changes:

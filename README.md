@@ -8,6 +8,18 @@ Skill repo para rollout controlado de `tools.elevated` via Telegram em ambientes
 - `scripts/`: utilitários de inspeção, preflight, apply e validação
 - `references/`: escopo suportado, troubleshooting e limites de validação
 
+## Input operacional
+
+O repositório não publica um sender real de Telegram.
+
+Passe o identificador explicitamente:
+
+```bash
+export TELEGRAM_SENDER_ID="SEU_TELEGRAM_SENDER_ID"
+```
+
+Ou informe `--sender SEU_TELEGRAM_SENDER_ID` nos scripts Python.
+
 ## Fluxo Git recomendado
 
 Este repositório usa duas branches fixas:

@@ -19,7 +19,7 @@
 ## Canonical rollout shape
 
 ### Rescue local
-- global Telegram allowlist contains `6204912070`
+- global Telegram allowlist contains `TELEGRAM_SENDER_ID`
 - `watchdog` explicitly enabled
 - `updater` explicitly disabled
 

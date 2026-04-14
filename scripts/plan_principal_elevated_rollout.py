@@ -12,12 +12,16 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WRAPPER = os.path.join(SCRIPT_DIR, "principal-openclaw.sh")
 EXPECTED_STATE_DIR = os.path.join(HOME_DIR, ".openclaw")
 EXPECTED_CONFIG_PATH = os.path.join(EXPECTED_STATE_DIR, "openclaw.json")
-DEFAULT_SENDER = "6204912070"
-
-
 def fail(message: str) -> None:
     print(f"[FAIL] {message}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def resolve_sender(cli_value: str | None) -> str:
+    sender = cli_value or os.environ.get("TELEGRAM_SENDER_ID")
+    if not sender:
+        fail("telegram sender id is required; pass --sender or set TELEGRAM_SENDER_ID")
+    return str(sender)
 
 
 def load_json(path: str) -> Dict[str, Any]:
@@ -85,10 +89,11 @@ def current_agent_state(agent: Dict[str, Any], sender: str, global_enabled: bool
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Read-only planner for principal Telegram elevated rollout. Requires explicit agent decisions.")
-    parser.add_argument("--sender", default=DEFAULT_SENDER, help=f"Telegram sender id to plan for (default: {DEFAULT_SENDER})")
+    parser.add_argument("--sender", help="Telegram sender id to plan for. Defaults to TELEGRAM_SENDER_ID when set.")
     parser.add_argument("--allow-agent", action="append", default=[], help="Agent id to explicitly allow in the rollout plan. Repeat as needed.")
     parser.add_argument("--block-agent", action="append", default=[], help="Agent id to explicitly block in the rollout plan. Repeat as needed.")
     args = parser.parse_args()
+    sender = resolve_sender(args.sender)
 
     if not os.path.exists(WRAPPER) or not os.access(WRAPPER, os.X_OK):
         fail(f"wrapper not executable: {WRAPPER}")
@@ -124,7 +129,7 @@ def main() -> None:
     if not isinstance(global_allow_from, dict):
         global_allow_from = {}
     global_telegram = global_allow_from.get("telegram") or []
-    global_sender_allowed = allowlist_contains(global_telegram, args.sender)
+    global_sender_allowed = allowlist_contains(global_telegram, sender)
 
     agents_root = config.get("agents") or {}
     if not isinstance(agents_root, dict):
@@ -163,7 +168,7 @@ def main() -> None:
 
     out: List[str] = []
     out.append("Principal Telegram elevated rollout plan (read-only)")
-    out.append(f"Requested sender    : telegram:{args.sender}")
+    out.append(f"Requested sender    : telegram:{sender}")
     out.append(f"Wrapper             : {WRAPPER}")
     out.append(f"Expected state dir  : {EXPECTED_STATE_DIR}")
     out.append(f"Expected config     : {EXPECTED_CONFIG_PATH}")
@@ -179,7 +184,7 @@ def main() -> None:
     out.append("")
     out.append(f"Agents ({len(agent_map)})")
     for agent_id in sorted(agent_map.keys()):
-        state = current_agent_state(agent_map[agent_id], args.sender, global_enabled, global_sender_allowed)
+        state = current_agent_state(agent_map[agent_id], sender, global_enabled, global_sender_allowed)
         decision = "allow" if agent_id in allow_agents else "block"
         out.append(f"- {agent_id}")
         out.append(f"  - decision                  : {decision}")
@@ -193,23 +198,23 @@ def main() -> None:
     else:
         out.append("- set tools.elevated.enabled=true")
     if global_sender_allowed:
-        out.append(f"- keep sender {args.sender} in tools.elevated.allowFrom.telegram")
+        out.append(f"- keep sender {sender} in tools.elevated.allowFrom.telegram")
     else:
-        out.append(f"- add sender {args.sender} to tools.elevated.allowFrom.telegram")
+        out.append(f"- add sender {sender} to tools.elevated.allowFrom.telegram")
     for agent_id in sorted(allow_agents):
-        state = current_agent_state(agent_map[agent_id], args.sender, global_enabled, global_sender_allowed)
+        state = current_agent_state(agent_map[agent_id], sender, global_enabled, global_sender_allowed)
         if state["override_enabled"] != "true":
             out.append(f"- set {agent_id}.tools.elevated.enabled=true")
         else:
             out.append(f"- keep {agent_id}.tools.elevated.enabled=true")
         if state["override_allowlist"] == "inherit":
-            out.append(f"- add explicit sender {args.sender} to {agent_id}.tools.elevated.allowFrom.telegram")
-        elif args.sender in state["override_allowlist"].split(", "):
-            out.append(f"- keep sender {args.sender} in {agent_id}.tools.elevated.allowFrom.telegram")
+            out.append(f"- add explicit sender {sender} to {agent_id}.tools.elevated.allowFrom.telegram")
+        elif sender in state["override_allowlist"].split(", "):
+            out.append(f"- keep sender {sender} in {agent_id}.tools.elevated.allowFrom.telegram")
         else:
-            out.append(f"- add sender {args.sender} to {agent_id}.tools.elevated.allowFrom.telegram")
+            out.append(f"- add sender {sender} to {agent_id}.tools.elevated.allowFrom.telegram")
     for agent_id in sorted(block_agents):
-        state = current_agent_state(agent_map[agent_id], args.sender, global_enabled, global_sender_allowed)
+        state = current_agent_state(agent_map[agent_id], sender, global_enabled, global_sender_allowed)
         if state["override_enabled"] != "false":
             out.append(f"- set {agent_id}.tools.elevated.enabled=false")
         else:

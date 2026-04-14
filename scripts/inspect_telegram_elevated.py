@@ -36,6 +36,13 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
+def resolve_sender(cli_value: str | None) -> str:
+    sender = cli_value or os.environ.get("TELEGRAM_SENDER_ID")
+    if not sender:
+        fail("telegram sender id is required; pass --sender or set TELEGRAM_SENDER_ID")
+    return str(sender)
+
+
 def to_tilde(path: str) -> str:
     if path.startswith(HOME_DIR + os.sep):
         return path.replace(HOME_DIR, "~", 1)
@@ -245,9 +252,9 @@ def inspect_target(target: str, sender: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inspect Telegram elevated config and gateway context without mutating anything.")
     parser.add_argument("--target", required=True, choices=sorted(TARGETS.keys()))
-    parser.add_argument("--sender", default="6204912070", help="Telegram sender id to inspect against allowlists (default: 6204912070)")
+    parser.add_argument("--sender", help="Telegram sender id to inspect against allowlists. Defaults to TELEGRAM_SENDER_ID when set.")
     args = parser.parse_args()
-    sys.stdout.write(inspect_target(args.target, str(args.sender)))
+    sys.stdout.write(inspect_target(args.target, resolve_sender(args.sender)))
 
 
 if __name__ == "__main__":
