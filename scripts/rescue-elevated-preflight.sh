@@ -23,13 +23,13 @@ EXPECTED_RESCUE_CONFIG_PATH="$EXPECTED_RESCUE_STATE_DIR/openclaw.json"
 command -v python3 >/dev/null 2>&1 || fail "python3 not found in PATH"
 python3 -m json.tool "$RESCUE_CONFIG_PATH" >/dev/null 2>&1 || fail "rescue config is not valid JSON: $RESCUE_CONFIG_PATH"
 
-STATUS_OUTPUT="$($WRAPPER gateway status 2>&1)" || fail "rescue gateway status failed"
+STATUS_OUTPUT="$($WRAPPER gateway status --require-rpc 2>&1)" || fail "rescue gateway status failed"
 
 printf '%s\n' "$STATUS_OUTPUT"
 
 grep -Fq "Config (cli): ~/.openclaw-rescue/openclaw.json" <<<"$STATUS_OUTPUT" || fail "gateway status did not prove rescue cli config"
 grep -Fq "Config (service): ~/.openclaw-rescue/openclaw.json" <<<"$STATUS_OUTPUT" || fail "gateway status did not prove rescue service config"
-grep -Fq "RPC probe: ok" <<<"$STATUS_OUTPUT" || fail "rescue RPC probe is not ok"
+grep -Eq "^(RPC|Read|Connectivity) probe: ok$" <<<"$STATUS_OUTPUT" || fail "rescue probe is not ok"
 if grep -Fq "Config (cli): ~/.openclaw/openclaw.json" <<<"$STATUS_OUTPUT"; then
   fail "rescue preflight still points to principal config"
 fi
@@ -37,4 +37,4 @@ if grep -Fq "Config (service): ~/.openclaw/openclaw.json" <<<"$STATUS_OUTPUT"; t
   fail "rescue service config still points to principal config"
 fi
 
-echo "[OK] rescue gateway status references rescue config and rpc is ok"
+echo "[OK] rescue gateway status references rescue config and probe is ok"

@@ -6,7 +6,7 @@ Treat these as two different kinds of proof.
 
 - target gateway context
 - config path and service config path
-- `RPC probe: ok`
+- gateway probe ok (current OpenClaw prints `Read probe: ok` with `--require-rpc`; older builds may show `RPC probe: ok` or `Connectivity probe: ok`)
 - current `tools.elevated` state
 - current Telegram allowlists
 - per-agent overrides

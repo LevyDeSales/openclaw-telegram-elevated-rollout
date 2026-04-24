@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -110,13 +113,13 @@ def main() -> None:
     if not os.path.isfile(config_path):
         fail(f"principal config missing: {config_path}")
 
-    status_output = run_wrapper("gateway", "status")
+    status_output = run_wrapper("gateway", "status", "--require-rpc")
     if "Config (cli): ~/.openclaw/openclaw.json" not in status_output:
         fail("gateway status did not prove principal cli config before apply")
     if "Config (service): ~/.openclaw/openclaw.json" not in status_output:
         fail("gateway status did not prove principal service config before apply")
-    if "RPC probe: ok" not in status_output:
-        fail("principal RPC probe is not ok before apply")
+    if not re.search(r"^(?:RPC|Read|Connectivity) probe:\s*ok$", status_output, re.M):
+        fail("principal probe is not ok before apply")
 
     config = load_json(config_path)
 

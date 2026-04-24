@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -127,27 +129,27 @@ def inspect_target(target: str, sender: str) -> str:
         fail(f"config missing: {config_path}")
 
     config = load_json(config_path)
-    gateway_output = run_wrapper(wrapper, "gateway", "status")
+    gateway_output = run_wrapper(wrapper, "gateway", "status", "--require-rpc")
     lines = gateway_output.splitlines()
 
     cli_config = line_value(lines, r"^Config \(cli\):\s*(.+)$")
     service_config = line_value(lines, r"^Config \(service\):\s*(.+)$")
-    rpc_probe = line_value(lines, r"^RPC probe:\s*(.+)$")
+    probe_status = line_value(lines, r"^(?:RPC|Read|Connectivity) probe:\s*(.+)$")
 
     if not cli_config:
         fail("gateway status did not expose Config (cli)")
     if not service_config:
         fail("gateway status did not expose Config (service)")
-    if not rpc_probe:
-        fail("gateway status did not expose RPC probe")
+    if not probe_status:
+        fail("gateway status did not expose probe status")
 
     valid_config_markers = markers_for_path(config_path)
     if cli_config not in valid_config_markers:
         fail(f"gateway status CLI config does not match target config: {cli_config}")
     if service_config not in valid_config_markers:
         fail(f"gateway status service config does not match target config: {service_config}")
-    if rpc_probe != "ok":
-        fail(f"RPC probe is not ok: {rpc_probe}")
+    if probe_status != "ok":
+        fail(f"probe status is not ok: {probe_status}")
 
     forbidden_fragment = spec["forbidden_path_fragment"]
     if forbidden_fragment and forbidden_fragment in gateway_output and target == "principal-local":
@@ -177,7 +179,7 @@ def inspect_target(target: str, sender: str) -> str:
     out.append(f"Expected config     : {config_path}")
     out.append(f"Config (cli)        : {cli_config}")
     out.append(f"Config (service)    : {service_config}")
-    out.append(f"RPC probe           : {rpc_probe}")
+    out.append(f"Probe               : {probe_status}")
     out.append("")
     out.append("Global elevated gate")
     out.append(f"- enabled           : {str(global_enabled).lower()}")
