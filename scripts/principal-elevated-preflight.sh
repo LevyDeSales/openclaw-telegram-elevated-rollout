@@ -21,12 +21,12 @@ EXPECTED_PRINCIPAL_CONFIG_PATH="$EXPECTED_PRINCIPAL_STATE_DIR/openclaw.json"
 command -v python3 >/dev/null 2>&1 || fail "python3 not found in PATH"
 python3 -m json.tool "$EXPECTED_PRINCIPAL_CONFIG_PATH" >/dev/null 2>&1 || fail "principal config is not valid JSON: $EXPECTED_PRINCIPAL_CONFIG_PATH"
 
-STATUS_OUTPUT="$($WRAPPER gateway status 2>&1)" || fail "principal gateway status failed"
+STATUS_OUTPUT="$($WRAPPER gateway status --require-rpc 2>&1)" || fail "principal gateway status failed"
 printf '%s\n' "$STATUS_OUTPUT"
 
 grep -Fq "Config (cli): ~/.openclaw/openclaw.json" <<<"$STATUS_OUTPUT" || fail "gateway status did not prove principal cli config"
 grep -Fq "Config (service): ~/.openclaw/openclaw.json" <<<"$STATUS_OUTPUT" || fail "gateway status did not prove principal service config"
-grep -Fq "RPC probe: ok" <<<"$STATUS_OUTPUT" || fail "principal RPC probe is not ok"
+grep -Eq "^(RPC|Read|Connectivity) probe: ok$" <<<"$STATUS_OUTPUT" || fail "principal probe is not ok"
 if grep -Fq ".openclaw-rescue" <<<"$STATUS_OUTPUT"; then
   fail "principal preflight still references rescue"
 fi
@@ -46,5 +46,5 @@ PY
 [[ "$AGENT_COUNT" != "INVALID" ]] || fail "principal config does not contain a valid agents.list"
 [[ "$AGENT_COUNT" -gt 0 ]] || fail "principal config has no agents to plan against"
 
-echo "[OK] principal gateway status references principal config and rpc is ok"
+echo "[OK] principal gateway status references principal config and probe is ok"
 echo "[OK] principal config contains $AGENT_COUNT agent(s)"

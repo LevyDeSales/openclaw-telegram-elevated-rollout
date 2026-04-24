@@ -35,7 +35,7 @@ Read when the user treats shell/config success as if it already proved chat/runt
 
 The bundled scripts can prove:
 - gateway target and config path
-- health / `RPC probe: ok`
+- health / gateway probe ok (`gateway status --require-rpc`; current OpenClaw prints `Read probe: ok`)
 - current elevated gates and allowlists
 - rollout delta for the principal
 
